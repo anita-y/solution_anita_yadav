@@ -1,0 +1,26 @@
+var chai = require('chai');
+const fs = require('fs');
+const expect = require('chai').expect;
+
+describe('test1', function () {
+    var inputs = null;
+
+    before('test1', function (done) {
+        fs.readFile('./inputData/clicks.json', 'utf8', function(err, data){
+            if (err) throw err;
+            inputs = JSON.parse(data);
+            done();
+        });
+    });
+
+    describe('parse json', function () {
+        it('should correctly parse the json', function () {
+            inputs.should.have.property('amount');
+
+        });
+    })
+
+});
+
+
+

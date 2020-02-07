@@ -1,0 +1,118 @@
+'use strict';
+
+const _ = require('lodash');
+const fs = require('fs');
+const Q = require('q');
+
+
+function fs_readJson(file) {
+    var deferred = Q.defer();
+    fs.readFile(file, (err, data) => {
+        if (err) deferred.reject(err);
+        else deferred.resolve(JSON.parse(data));
+    });
+    return deferred.promise;
+}
+
+function getIPLessThanTen(data) {
+    var deferred = Q.defer();
+    let staticData = data;
+    let ipData = {};
+    let ipLessTenClickArray = [];
+    let filterData = [];
+
+
+    staticData.forEach(element => {
+        if (ipData[element.ip]) {
+            let count = ipData[element.ip];
+            ipData[element.ip] = count + 1;
+        } else {
+            ipData[element.ip] = 1;
+        }
+    });
+
+
+    for (let i in ipData) {
+        if (ipData[i] < 4) {
+            ipLessTenClickArray.push(i);
+        }
+    }
+
+    for (let a = 0; a < staticData.length; a++) {
+        for (let b = 0; b < ipLessTenClickArray.length; b++) {
+            if (staticData[a].ip === ipLessTenClickArray[b]) {
+                filterData.push(staticData[a]);
+            }
+        }
+    }
+    deferred.resolve(filterData);
+    return deferred.promise;
+}
+
+function getHourlyData(filterData) {
+    var deferred = Q.defer();
+    var groupedByHour = _.groupBy(filterData, function (row) {
+        var dd = new Date(row.timestamp);
+        var hour = dd.getHours();
+        return hour;
+
+    });
+    deferred.resolve(groupedByHour);
+    return deferred.promise;
+}
+
+
+function getMaxClickAmount(groupedByHour) {
+    var deferred = Q.defer();
+    let finalData = [];
+    Object.keys(groupedByHour).forEach(function (row) {
+        let hr = row;
+        let amt = groupedByHour[row].map(function (ips) {
+            return ips.amount;
+        });
+        let maxAmt = Math.max(...amt);
+        let selectData = groupedByHour[row].filter(function (data) {
+            if (data.amount === maxAmt) {
+                return data;
+            }
+        });
+        let obj = {}
+        obj[hr] = selectData[0]
+
+        finalData.push(obj);
+    });
+    deferred.resolve(finalData);
+    return deferred.promise;
+
+}
+
+function writeToFile(finalData) {
+    var deferred = Q.defer();
+    fs.writeFile("resultSet.json", JSON.stringify(finalData), function(err)  {
+        if (err) deferred.reject(err);
+        deferred.resolve('file created');
+    });
+    return deferred.promise;
+}
+
+
+let getHourlyClicks = function () {
+    fs_readJson('./inputData/clicks.json')
+        .then(getIPLessThanTen)
+        .then(getHourlyData)
+        .then(getMaxClickAmount)
+        .then(writeToFile)
+        .then(function (res) {
+            console.log(res)
+        })
+        .catch(function (err) {
+            console.log('caught error')
+        })
+}
+
+module.exports = getHourlyClicks;
+
+
+(function () {
+    getHourlyClicks()
+})()
